@@ -1,0 +1,10 @@
+
+adeqdat <- do.call("rbind", lapply(grep("phylomad[.]subst", dir("adequacy"), value = T), function(x) t(read.csv(paste0("adequacy/", x, "/output.pvals.PhyloMAd.csv"), row.names = 1))))
+rownames(adeqdat) <- gsub("X", "", rownames(adeqdat))
+write.csv(adeqdat, file = "adequacy.test.results.csv")
+
+satdat <- read.csv("saturation.test.results.csv", header = T, row.names = 1)
+
+goodlocs <- rownames(adeqdat)[which(as.numeric(adeqdat[,"symmetry.pval"]) > 0.05 & as.numeric(adeqdat[,"internal.symmetry.pval"]) > 0.05 & as.numeric(adeqdat[,"marginal.symmetry.pval"]) > 0.05 & adeqdat[,"chi.squared.assessment"] == "low.risk" & adeqdat[,"multinomial.likelihood.assessment"] == "low.risk")]
+system("mkdir modad_locs")
+for(i in 1:length(goodlocs)) system(paste0("cp alignments/", goodlocs[i], " modad_locs/."))

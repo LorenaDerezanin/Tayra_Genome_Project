@@ -1,0 +1,13 @@
+try(system("~/Desktop/Software/paml4.8/bin/mcmctree dating_in.ctl"))
+system("mv out.BV in.BV")
+dating <- readLines("dating_in.ctl")
+dating[which(dating == grep("usedata", dating, value = T))] <- "usedata = 2*"
+writeLines(dating, con = "dating_in.ctl")
+try(system("~/Desktop/Software/paml4.8/bin/mcmctree dating_in.ctl"))
+
+datmc <- read.table("mcmc.txt", header=T)
+datmcmc <- mcmc(datmc)
+effectiveSize(datmcmc)
+pdf("mcmc.diagnostics.pdf", useDingbats = F, height = 5, width = 10)
+for(i in 1:14) plot(datmcmc[,i], type = "l", main = colnames(datmcmc)[i])
+dev.off()

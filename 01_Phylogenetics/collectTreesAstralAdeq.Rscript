@@ -1,0 +1,51 @@
+require(phangorn)
+source("collapseLowSup.R")
+source("concatenate.R")
+
+# Collect ML gene-trees:
+adtrees <- paste0(dir("modad_locs"), ".treefile")
+trfiles <- adtrees[which(adtrees %in% dir("als_trees"))]
+trs <- lapply(trfiles, function(x) read.tree(paste0("als_trees/", x)))
+for(i in 1:length(trs)) if("mus_musculus" %in% trs[[i]]$tip.label) trs[[i]] <- drop.tip(trs[[i]], "mus_musculus")
+class(trs) <- "multiPhylo"
+write.tree(trs, file = "treesAnalyses/alltrees_processed_ad.trs")
+
+# Run ASTRAL with raw ML gene-trees:
+
+system(paste0("java -jar ~/Desktop/Software/ASTRAL4.10.11/astral.4.10.11.jar -i treesAnalyses/alltrees_processed_ad.trs -o treesAnalyses/alltrees_processed_astral_ad.tre"))
+
+# Run ASTRAL collapsing branches with <0.5 support:
+trs50 <- trs
+for(i in 1:length(trs50)) trs50[[i]] <- collapseLowSup(trs50[[i]], 50)
+write.tree(trs50, file = "treesAnalyses/alltrees_collapsed50_processed_ad.trs")
+system(paste0("java -jar ~/Desktop/Software/ASTRAL4.10.11/astral.4.10.11.jar -i treesAnalyses/alltrees_collapsed50_processed_ad.trs -o treesAnalyses/alltrees_collapsed50_processed_astral_ad.tre"))
+
+# Run ASTRAL collapsing branches with <0.9 suppport:
+trs90 <- trs
+for(i in 1:length(trs90)) trs90[[i]] <- collapseLowSup(trs90[[i]], 90)
+write.tree(trs90, file = "treesAnalyses/alltrees_collapsed90_processed_ad.trs")
+system(paste0("java -jar ~/Desktop/Software/ASTRAL4.10.11/astral.4.10.11.jar -i treesAnalyses/alltrees_collapsed90_processed_ad.trs -o treesAnalyses/alltrees_collapsed90_processed_astral_ad.tre"))
+
+# Estimate gene and site concordance factors:
+
+allAls <- lapply(gsub("[.]treefile", "", trfiles), function(x) read.dna(paste0("modad_locs/", x), format = "fasta"))
+allAlsC <- concatenate(allAls)
+if("mus_musculus" %in% rownames(allAlsC)) allAlsC <- allAlsC[-which(rownames(allAlsC) == "mus_musculus"),]
+write.dna(allAlsC, file = "treesAnalyses/al_all_ad.fasta", format = "fasta", colsep = "")
+system("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -t treesAnalyses/alltrees_processed_astral_ad.tre --gcf treesAnalyses/alltrees_processed_ad.trs -s treesAnalyses/al_all_ad.fasta --scf 100 --prefix treesAnalyses/concordAstral_ad")
+
+system("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -t treesAnalyses/alltrees_collapsed50_processed_astral_ad.tre --gcf treesAnalyses/alltrees_collapsed50_processed_ad.trs -s treesAnalyses/al_all_ad.fasta --scf 100 --prefix treesAnalyses/concordAstral50_ad")
+
+system("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -t treesAnalyses/alltrees_collapsed90_processed_astral_ad.tre --gcf treesAnalyses/alltrees_collapsed90_processed_ad.trs -s treesAnalyses/al_all_ad.fasta --scf 100 --prefix treesAnalyses/concordAstral90_ad")
+
+# Estimate species tree from concatenated alignment (partition by codon position, use proportional branch lengths).
+
+loclens <- sapply(allAls, ncol)
+part <- c("#NEXUS", "begin sets;", "", paste0("charset part1 = 1-", loclens[1], ";"))
+for(i in 2:length(loclens)) part <- c(part, paste0("charset part", i, " = ", sum(loclens[1:(i-1)])+1, "-", sum(loclens[1:(i-1)])+loclens[i], ";"))
+part <- c(part, "end;")
+writeLines(part, con = "treesAnalyses/partitionsAllLoci_ad.part")
+system("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -st DNA -m TESTNEW -s treesAnalyses/al_all_ad.fasta -alrt 1000 -nt 8 -spp treesAnalyses/partitionsAllLoci_ad.part -pre treesAnalyses/concatAll_ad -redo")
+
+# Concordance factors based on IQtree tree:
+system("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -t treesAnalyses/concatAll_ad.treefile --gcf treesAnalyses/alltrees_processed_ad.trs -s treesAnalyses/al_all_ad.fasta --scf 100 --prefix treesAnalyses/concordIQ_ad")

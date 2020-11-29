@@ -1,0 +1,38 @@
+require(phangorn)
+source("concatenate.R")
+
+adtrees <- paste0(dir("modad_locs"), ".treefile")
+trfiles <- adtrees[which(adtrees %in% dir("als_trees"))]
+trs <- lapply(trfiles, function(x) read.tree(paste0("als_trees/", x)))
+for(i in 1:length(trs)) if("mus_musculus" %in% trs[[i]]$tip.label) trs[[i]] <- drop.tip(trs[[i]], "mus_musculus")
+class(trs) <- "multiPhylo"
+names(trs) <- trfiles
+
+ntiptrs <- sapply(trs, Ntip)
+names(trs) <- trfiles
+trs8 <- trs[which(ntiptrs == 8)]
+sptr <- read.tree("treesAnalyses/alltrees_collapsed50_processed_astral_ad.tre")
+sptrdists <- sapply(trs8, function(x) RF.dist(x, sptr))
+trs8 <- trs8[which(sptrdists == 0)]
+alfiles8 <- gsub("[.]treefile", "", names(trs8))
+als8 <- lapply(alfiles8, function(x) read.dna(paste0("als_trees/", x), format = "fasta"))
+als8 <- concatenate(als8)
+als8 <- als8[-which(rownames(als8) == "mus_musculus"),]
+als8.1 <- als8[,c(T,F,F)]
+als8.2 <- als8[,c(F,T,F)]
+als8.3 <- als8[,c(F,F,T)]
+taxa <- cbind(rownames(als8.1), paste0("t", 1:8, " "))
+rownames(taxa) <- rownames(als8.1)
+write.csv(taxa, file = "dating_ad/taxacode.csv")
+rownames(als8.1) <- rownames(als8.2) <- rownames(als8.3) <- taxa[,2]
+write.dna(als8.1, file = "dating_ad/al.phy", colsep = "", format = "sequential", nbcol = -1)
+write.dna(als8.2, file = "dating_ad/al.phy", colsep = "", append = T, format = "sequential", nbcol = -1)
+write.dna(als8.3, file = "dating_ad/al.phy", colsep = "", append = T, format = "sequential", nbcol = -1)
+#sptr$edge.length <- NULL
+#sptr$node.label <- NULL
+#sptr <- root(sptr, "felis_catus", resolve.root = T)
+#sptr$tip.label <- taxa[sptr$tip.label,2]
+#write.tree(sptr, file = "dating_ad/sptr.tre")
+#sptr <- readLines("dating_ad/sptr.tre")
+#sptr <- c("8", sptr)
+#writeLines(sptr, con = "dating_ad/sptr.tre")

@@ -1,0 +1,88 @@
+require(phangorn)
+source("trimCols.R")
+source("trimCodons.R")
+
+loci <- grep("fasta", dir("nucleotide_sequences"), value = T)
+nakedloci <- gsub("[.]fasta", "", loci)
+failedloci <- vector()
+
+#for(i in 1:length(loci)){
+for(i in 198:length(loci)){
+
+      # Initial MACSE cleanup alignment and export
+      system(paste0("java -jar ~/Desktop/Software/macse_v2.03.jar -prog trimNonHomologousFragments -seq nucleotide_sequences/", loci[i], " -min_trim_in 10 -min_trim_ext 10 -min_homology_to_keep_seq 0.5 -out_NT als_trees/", nakedloci[i], "_macse_NT.fasta -out_AA als_trees/", nakedloci[i], "_macse_AA.fasta"))
+      system(paste0("rm nucleotide_sequences/", nakedloci[i], "_mask_detail_NT.fasta nucleotide_sequences/", nakedloci[i], "_stats.csv"))
+      system(paste0("java -jar ~/Desktop/Software/macse_v2.03.jar -prog alignSequences -seq als_trees/", nakedloci[i], "_macse_NT.fasta -out_NT als_trees/", nakedloci[i], "_macse_NT.fasta -out_AA als_trees/", nakedloci[i], "_macse_AA.fasta"))
+      system(paste0("java -jar ~/Desktop/Software/macse_v2.03.jar -prog exportAlignment -align als_trees/", nakedloci[i], "_macse_NT.fasta -codonForInternalStop NNN -codonForFinalStop --- -codonForInternalFS --- -charForRemainingFS - -out_NT als_trees/", nakedloci[i], "_macse_NT.fasta -out_AA als_trees/", nakedloci[i], "_macse_AA.fasta"))
+
+      # Initial cleanup
+      if(file.exists(paste0("als_trees/", nakedloci[i], "_macse_NT.fasta"))){
+	al <- read.dna(paste0("als_trees/", nakedloci[i], "_macse_NT.fasta"), format = "fasta")
+	if(is.null(al)) next
+        al <- trimCols(al, 0.5)
+	al <- trimCodons(al, 0.5)
+        seqstodel <- sapply(rownames(al), function(x) all(as.character(al[x,]) %in% c("N", "n", "?", "-", "O", "o", "X", "x")) | sum(as.character(al[x,]) %in% c("a", "c", "t", "g", "A", "C", "T", "G")) < 9)
+        if(sum(seqstodel) > 0) al <- al[!seqstodel, ]
+        if(nrow(al) > 3 & ncol(al) > 99){
+       		try(write.dna(al, format = "fasta", file = paste0("als_trees/", nakedloci[i], "_macse_NT.fasta"), colsep = ""))
+        } else {
+		system(paste0("rm als_trees/", nakedloci[i], "*"))
+		failedloci <- c(failedloci, nakedloci[i])
+		print("not enough data in locus")
+		next
+	}
+	
+	# Run fast tree and treeshrink, and remove taxa from al
+	system(paste0("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -st DNA -m GTR+G -s als_trees/", nakedloci[i], "_macse_NT.fasta -fast -redo -pre als_trees/", nakedloci[i], "_macse_NT.fasta"))
+	tr <- read.tree(paste0("als_trees/", nakedloci[i], "_macse_NT.fasta.treefile"))
+	write.tree(tr, file = paste0("als_trees/", nakedloci[i], ".tre"))
+	system(paste0("python3 ~/Desktop/Software/TreeShrink-master/run_treeshrink.py -m per-gene -t als_trees/", nakedloci[i], ".tre -o als_trees/", nakedloci[i], "_TS"))
+	toremove <- strsplit(readLines(paste0("als_trees/", nakedloci[i], "_TS/", grep("05[.]txt", dir(paste0("als_trees/", nakedloci[i], "_TS")), value = T))), split = "\t")
+	if(class(toremove) != "list"){
+	toremove <- sapply(toremove, function(x) grep(x, rownames(al), value = T))
+	al <- al[-which(rownames(al) %in% toremove),]
+	}
+
+
+########
+##### Run prequal and re-align - CURRENTLY NOT USING PREQUAL BUT A SIMILAR OPTION IN MACSE
+
+	if(nrow(al) > 3 & ncol(al) > 99){
+       		al <- as.DNAbin(lapply(as.character(as.list(al)), function(x) x[which(x != "-")]))
+	write.dna(al, file = paste0("als_trees/", nakedloci[i], ".fasta.filtered"), format = "fasta", colsep = "")
+        } else {
+		system(paste0("rm als_trees/", nakedloci[i], "*"))
+		failedloci <- c(failedloci, nakedloci[i])
+		print("not enough data in locus")
+		next
+	}
+
+#	system(paste0("~/Desktop/Software/prequal-master/prequal als_trees/", nakedloci[i], ".fasta.filtered"))
+	system(paste0("java -jar ~/Desktop/Software/macse_v2.03.jar -prog alignSequences -seq als_trees/", nakedloci[i], ".fasta.filtered -out_NT als_trees/", nakedloci[i], "_macse_NT.fasta -out_AA als_trees/", nakedloci[i], "_macse_AA.fasta"))
+	system(paste0("java -jar ~/Desktop/Software/macse_v2.03.jar -prog exportAlignment -align als_trees/", nakedloci[i], "_macse_NT.fasta -codonForInternalStop NNN -codonForFinalStop --- -codonForInternalFS --- -charForRemainingFS - -out_NT als_trees/", nakedloci[i], "_macse_NT.fasta -out_AA als_trees/", nakedloci[i], "_macse_AA.fasta"))	
+# File cleanup for PREQUAL
+#	system(paste0("rm -r als_trees/", nakedloci[i], ".fasta als_trees/", nakedloci[i], ".fasta.dna.filtered als_trees/", nakedloci[i], ".fasta.filtered als_trees/", nakedloci[i], ".fasta.translation als_trees/", nakedloci[i], ".fasta.warning als_trees/", nakedloci[i], ".fasta.filtered.PP als_trees/", nakedloci[i], "_TS als_trees/", nakedloci[i], ".tre"))
+########
+########
+	
+	
+	# Final cleanup
+	al <- read.dna(paste0("als_trees/", nakedloci[i], "_macse_NT.fasta"), format = "fasta")
+        al <- trimCols(al, 0.5)
+        al <- trimCodons(al, 0.5)
+        seqstodel <- sapply(rownames(al), function(x) all(as.character(al[x,]) %in% c("N", "n", "?", "-", "O", "o", "X", "x")) | sum(as.character(al[x,]) %in% c("a", "c", "t", "g", "A", "C", "T", "G")) < 9)
+        if(sum(seqstodel) > 0) al <- al[!seqstodel, ]
+        if(nrow(al) > 3 & ncol(al) > 98){
+                try(write.dna(al, format = "fasta", file = paste0("als_trees/", nakedloci[i], "_macse_NT.fasta"), colsep = ""))
+		# Run thorough IQ-TREE search
+		system(paste0("~/Desktop/Software/iqtree-1.7-beta9-MacOSX/bin/iqtree -st DNA -m TESTNEW -s als_trees/", nakedloci[i], "_macse_NT.fasta -alrt 1000 -nt 2 -redo -pre als_trees/", nakedloci[i], "_macse_NT.fasta"))
+		system(paste0("rm -r als_trees/", nakedloci[i], "_TS als_trees/", nakedloci[i], ".tre als_trees/", nakedloci[i], "_macse_NT.fasta.bionj als_trees/", nakedloci[i], "_macse_NT.fasta.model.gz als_trees/", nakedloci[i], "_macse_NT.fasta.ckp.gz als_trees/", nakedloci[i], "_macse_NT.fasta.log als_trees/", nakedloci[i], "_macse_NT.fasta.mldist als_trees/", nakedloci[i], ".fasta.filtered"))
+        } else {
+                system(paste0("rm als_trees/", nakedloci[i], "*"))
+		failedloci <- c(failedloci, nakedloci[i])
+        print("not enough data in locus")
+        next
+	}
+}
+}
+
