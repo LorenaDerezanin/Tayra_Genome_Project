@@ -1,0 +1,57 @@
+
+
+
+# OUT="/home/fb4/derezanin/sos-fert/20_structural_variants/allegro_dirs/03_sv_detection/gulo/09_sv_analysis/eira_subsamp_1run_lumpy"
+# WORK_DIR="/home/fb4/derezanin/sos-fert/20_structural_variants/allegro_dirs/03_sv_detection/gulo/09_sv_analysis"
+# EXCLUDE="/home/fb4/derezanin/sos-fert/20_structural_variants/allegro_dirs/03_sv_detection/gulo/ref_genome"
+
+SAMPLE1=["eira_subsamp_1run"]
+# SAMPLE2=["eira_subsamp_2run"]
+# CHROMS=["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","20"]
+CHROMS=range(1,21)
+
+rule all:
+  input:
+      expand("09_sv_analysis/{sample1}/{sample1}_HiC_scf_{chrom}_lumpy.vcf", sample1=SAMPLE1, chrom=CHROMS),
+      # expand("09_sv_analysis/{sample2}/{sample2}_HiC_scf_{chrom}_lumpy.vcf", sample2=SAMPLE2, chrom=CHROMS)
+
+
+
+rule lumpy1_sv_call_per_chr:
+  input:
+    bam="07_chr_only/{sample1}/{sample1}_HiC_scf_{chrom}.bam", chrom='{chrom}',
+    split="09_sv_analysis/eira_1.split.bam",
+    disc="09_sv_analysis/eira_1.disc.bam"
+  output:
+    "09_sv_analysis/{sample1}/{sample1}_HiC_scf_{chrom}_lumpy.vcf"
+  log:
+    "logs/lumpy/{sample1}_{chrom}_lumpy.log"
+  params:
+    exclude="ref_genome/eira_subsamp_1run_gaps_high_cov_exclude.bed",
+    tmp="{sample1}_lumpy_tmp_{chrom}"
+  conda:
+    "envs/lumpy.yml"
+  shell:
+    "lumpyexpress -B {input.bam} -S {input.split} -D {input.disc} -x {params.exclude} -T {params.tmp} -o {output}"
+
+
+# rule lumpy2_sv_call_per_chr:
+#   input:
+#     bam="07_chr_only/{sample2}/{sample2}_HiC_scf_{chrom}.bam", 
+#     split="09_sv_analysis/eira_2.split.bam",
+#     disc="09_sv_analysis/eira_2.disc.bam"
+#   output:
+#     "09_sv_analysis/{sample2}/{sample2}_HiC_scf_{chrom}_lumpy.vcf"
+#   log:
+#     "logs/lumpy/{sample2}_{chrom}_lumpy.log"
+#   params:
+#     exclude="ref_genome/eira_subsamp_2run_gaps_high_cov_exclude.bed",
+#     tmp="eira_2run_lumpy_tmp"
+#   conda:
+#     "envs/lumpy.yml"
+#   shell:
+#     "lumpyexpress -B {input.bam} -S {input.split} -D {input.disc} -x {params.exclude} -T {params.tmp} -o {output}"
+
+
+
+

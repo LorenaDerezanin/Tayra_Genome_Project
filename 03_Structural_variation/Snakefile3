@@ -1,0 +1,67 @@
+#### GET CHROMOSOME-SCAFFOLDS ####
+
+## run as snakemake --use-conda --cores 20 --verbose -s Snakefile3 
+SAMPLES=["eira_eira_ref_subsamp_1run", "eira_eira_ref_subsamp_2run"] # "zibellina_mrg_is250", "zibellina_mrg_is500"
+CHROMS=range(1, 21)
+# SPECIES=["eira"]
+
+rule all:
+    input:
+        expand("07_chr_only/{sample}_HiC_scf_{chrom}.bam", sample=SAMPLES, chrom=CHROMS),
+        expand("08_no_unloc_scf/{sample}_no_unloc.bam", sample=SAMPLES),
+        # expand("08_no_unloc_scf/{species}/{sample}_dwnsamp30x.bam", sample=SAMPLES, species=SPECIES)
+        
+
+# only keep reads mapped to chromosome scaffolds
+rule samtools_view:
+    input:
+        "05_dedup/{sample}.dedup.bam"
+    output:
+        "07_chr_only/{sample}_HiC_scf_{chrom}.bam"
+    log:
+        "logs/03_samtools/{sample}_HiC_scf_{chrom}.log"
+    params:
+        chrom="{chrom}"
+    conda:
+        "envs/smoove.yml"
+    shell:
+        "samtools view -b {input} HiC_scaffold_{params.chrom} > {output}"
+
+
+
+# merge chromosomes into 1 bam
+rule samtools_merge:
+    input:
+        expand("07_chr_only/{sample}_HiC_scf_{chrom}.bam", chrom=CHROMS, sample="{sample}")
+    output:
+        "08_no_unloc_scf/{sample}_no_unloc.bam"
+    log:
+        "logs/03_samtools/{sample}_no_unloc.log"
+    conda:
+        "envs/smoove.yml"
+    shell:
+        "samtools merge {output} {input}"
+
+
+
+# downsample bam files to lower coverage to reduce the number of false positive SV calls
+
+# rule donwsample_bams:
+#     input:
+#         "08_no_unloc_scf/{species}/{sample}.bam"
+#     output:
+#         "08_no_unloc_scf/{species}/{sample}_dwnsamp30x.bam"
+#     log:
+#         "logs/03_samtools/{sample}_dwnsamp30x.log"
+#     params:
+#         "1.48"    # keeping 48% of the reads, 1 is a random seed
+#     conda:
+#         "envs/smoove.yml"
+#     shell:
+#         "samtools view -s {params} -b {input} > {output}"
+
+
+
+
+# separate bams per species and call SVs (Snakefile4)
+

@@ -1,0 +1,171 @@
+
+### STRUCTURAL VARIANT ANNOTATION ### 
+
+SPECIES=["gulo", "zibellina", "eira"] # "gulo", "zibellina", 
+SV_TYPE=["DUP"]  #"DEL", "INV", "INS"
+
+rule all:
+  input:
+      # expand("11_annotated_SVs/{species}.vep.annotated.vcf", species=SPECIES),
+      # expand("11_sv_calls_all_species/annotated/{species}_privateSVs.stats", species=SPECIES),
+      expand("11_sv_calls_all_species/annotated/{species}_private_{sv_type}.vcf", species=SPECIES, sv_type=SV_TYPE),
+      expand("11_sv_calls_all_species/annotated/{species}_private_gene_info_{sv_type}.csv", species=SPECIES, sv_type=SV_TYPE)
+    
+      
+
+
+
+# annotate all variants using custom gff from Hi-C ref genome 
+
+
+rule vep_annotate_conda:
+    input:
+      calls="10_sv_calls_merged_per_sample/04_sample_merged_callers/{species}_merged.vcf",
+      cache="annotation/vep/cache",
+      fasta="ref_genome/MusPutFur1.0_HiC.fasta"
+    output:
+      annotated="11_annotated_SVs/{species}.vep.annotated.vcf"
+    params:
+      extra="--coding_only --per_gene --gene_phenotype --symbol --protein --overlaps --max_sv_size 200000000 --force_overwrite",
+      gff="annotation/MusPutFur1.0_HiC_ensembl101_liftoff_srt_srn.gff.gz"
+    log:
+      "logs/vep/{species}.vep.anno.log"
+    threads: 1
+    conda:
+      "envs/vep101.yml"
+    shell:
+      "vep -i {input.calls} --species mustela_putorius_furo --cache --dir_cache {input.cache} --gff {params.gff} --fasta {input.fasta} {params.extra} --o {output.annotated} --stats_text --vcf --format vcf 2> {log}"
+
+# --fork 4 
+
+# not working, try cp files on Allegro, run vep conda manually
+
+
+# annotated on Allegro with BFF vep 101 pipeline
+
+# LIFTOFF=/home/derezanin/NO_BACKUP/02_df_mustela_putorius_furo/03_annotation_files/liftoff_annotation
+# CACHE=/home/derezanin/NO_BACKUP/02_df_mustela_putorius_furo/03_annotation_files/liftoff_annotation/mustela_putorius_furo
+# REF=/home/derezanin/NO_BACKUP/02_df_mustela_putorius_furo/01_ref_genome
+
+
+
+# vep -i zibellina_merged.vcf \
+# --force_overwrite \
+# --dir_cache $CACHE \
+# --species mustela_putorius_furo \
+# --gff $LIFTOFF/MusPutFur1.0_HiC_ensembl101_liftoff_srt_srn.gff.gz \
+# --fasta $REF/MusPutFur1.0_HiC.fasta \
+# --o zibellina_vep_annot.vcf \
+# --stats_text zibellina_vep_annot.txt \
+# --max_sv_size 200000000 \
+# --vcf \
+# --format vcf \
+# --overlaps \
+# --protein \
+# --gene_phenotype \
+# --coding_only \
+# --per_gene \
+# --symbol \
+# --sift b \
+# --fork 4 \
+# --variant_class >& zibellina_vep_annot.log
+
+
+# vep -i Mustela_eversmanni_merged_noNs.vcf \
+# --force_overwrite \
+# --dir_cache $CACHE \
+# --species mustela_putorius_furo \
+# --gff $LIFTOFF/MusPutFur1.0_HiC_ensembl101_liftoff_srt_srn.gff.gz \
+# --fasta $REF/MusPutFur1.0_HiC.fasta \
+# --o eversmanni_noNs_vep_annot.vcf \
+# --stats_text eversmanni_vep_annot.txt \
+# --max_sv_size 200000000 \
+# --vcf \
+# --format vcf \
+# --overlaps \
+# --protein \
+# --gene_phenotype \
+# --coding_only \
+# --per_gene \
+# --symbol \
+# --sift b \
+# --fork 4 \
+# --variant_class >& M_eversmanni_vep_annot.log
+
+
+# vep -i guloninae_mrg_h_noNs.vcf \
+# --force_overwrite \
+# --dir_cache $CACHE \
+# --species mustela_putorius_furo \
+# --gff $LIFTOFF/MusPutFur1.0_HiC_ensembl101_liftoff_srt_srn.gff.gz \
+# --fasta $REF/MusPutFur1.0_HiC.fasta \
+# --o guloninae_mrg_h_noNs_vep_annot.vcf \
+# --stats_text guloninae_mrg_h_noNs_vep_annot.txt \
+# --max_sv_size 200000000 \
+# --vcf \
+# --format vcf \
+# --overlaps \
+# --protein \
+# --gene_phenotype \
+# --coding_only \
+# --per_gene \
+# --symbol \
+# --sift b \
+# --fork 4 \
+# --variant_class >& guloninae_mrg_h_noNs_vep_annot.log
+
+
+# remove TRA
+
+
+#  "grep -v '^##' {input} | grep -P '^#|ENSMPUG' > {output} 2> {log}" 
+
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA_vep_annot.vcf | grep -P "^#|SUPP_VEC=100" > eira_private_SVs_noTRA.vcf
+
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA_vep_annot.vcf | grep -P "^#|SUPP_VEC=010" > gulo_private_SVs_noTRA.vcf
+
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA_vep_annot.vcf | grep -P "^#|SUPP_VEC=001" > zibellina_private_SVs_noTRA.vcf
+
+
+
+
+
+rule unique_SVs_per_line_stats:
+  input:
+    expand("11_sv_calls_all_species/annotated/{species}_private_SVs_genes.vcf", species="{species}")
+  output:
+    "11_sv_calls_all_species/annotated/{species}_privateSVs.stats"
+  log:
+    "logs/unique_svs/{species}_privateSVs.log"
+  params:
+    "50 -1 -1"
+  conda:
+    "envs/survivor.yml"
+  shell:
+    "SURVIVOR stats {input} {params} {output} 2> {log}"
+
+
+
+rule grep_SV_types_from_each_line:
+  input:
+   "11_sv_calls_all_species/annotated/{species}_private_SVs_genes.vcf"
+  output:
+    "11_sv_calls_all_species/annotated/{species}_private_{sv_type}.vcf"
+  log:
+    "log/unique_svs/{species}_{sv_type}.log"
+  params:
+    sv_type="{sv_type}"
+  shell:
+    "grep -v '^#' {input} | grep 'SVTYPE={params.sv_type}' > {output} 2> {log}"
+
+
+
+rule cut_SV_info_cols:
+  input:
+      "11_sv_calls_all_species/annotated/{species}_private_{sv_type}.vcf"
+  output:
+      "11_sv_calls_all_species/annotated/{species}_private_gene_info_{sv_type}.csv"
+  log:
+      "logs/unique_svs/{species}_private_gene_info_{sv_type}.log"
+  shell:
+      "cut -f 1,2,8 {input} > {output} 2> {log}"

@@ -1,0 +1,69 @@
+#### SEQ. READ PREPAPRATION ####
+
+## run as snakemake --use-conda --cores 8 --verbose -s Snakefile1
+
+SAMPLES=["eira_bc_qual_trmd"]
+# "ERR1007371", "ERR1007372", "ERR1007373", "ERR1007374", "ERR1007375", "ERR1007376", "ERR1007377", "ERR1007378"
+
+rule all:
+    input:
+        # expand("01_trimmed_reads/{sample}_1_val_1.fq.gz", sample=SAMPLES),
+        # expand("01_trimmed_reads/{sample}_1.fastq.gz_trimming_report.txt", sample=SAMPLES),
+        # expand("01_trimmed_reads/{sample}_2_val_2.fq.gz", sample=SAMPLES),
+        # expand("01_trimmed_reads/{sample}_2.fastq.gz_trimming_report.txt", sample=SAMPLES)
+        expand("01_trimmed_reads/{sample}.1.subsampled_1run.fastq.gz", sample=SAMPLES),
+        expand("01_trimmed_reads/{sample}.2.subsampled_1run.fastq.gz", sample=SAMPLES),
+        expand("01_trimmed_reads/{sample}.1.subsampled_2run.fastq.gz", sample=SAMPLES),
+        expand("01_trimmed_reads/{sample}.2.subsampled_2run.fastq.gz", sample=SAMPLES)
+
+
+rule trim_galore_pe_reads:
+    input:
+        ["00_raw_reads/{sample}_1.fastq.gz", "00_raw_reads/{sample}_2.fastq.gz"]
+    output:
+        "01_trimmed_reads/{sample}_1_val_1.fq.gz",
+        "01_trimmed_reads/{sample}_1.fastq.gz_trimming_report.txt",
+        "01_trimmed_reads/{sample}_2_val_2.fq.gz",
+        "01_trimmed_reads/{sample}_2.fastq.gz_trimming_report.txt"
+    params:
+        extra="-q 30 --length 80"
+    log:
+        "logs/01_trim_galore/{sample}.log"
+    wrapper:
+        "0.67.0/bio/trim_galore/pe"
+
+
+rule downsample_reads_1run:
+    input:
+        f1="01_trimmed_reads/{sample}_R1_val_1.fq.gz", 
+        f2="01_trimmed_reads/{sample}_R2_val_2.fq.gz"
+    output:
+        f1="01_trimmed_reads/{sample}.1.subsampled_1run.fastq.gz",
+        f2="01_trimmed_reads/{sample}.2.subsampled_1run.fastq.gz"
+    params:
+        n=510000000,
+        seed=12345
+    log:
+        "logs/seqtk/{sample}_subsamp1run.log"
+    threads:
+        10
+    wrapper:
+        "0.72.0/bio/seqtk/subsample/pe"
+
+
+rule downsample_reads_2run:
+    input:
+        f1="01_trimmed_reads/{sample}_R1_val_1.fq.gz", 
+        f2="01_trimmed_reads/{sample}_R2_val_2.fq.gz"
+    output:
+        f1="01_trimmed_reads/{sample}.1.subsampled_2run.fastq.gz",
+        f2="01_trimmed_reads/{sample}.2.subsampled_2run.fastq.gz"
+    params:
+        n=510000000,
+        seed=54321
+    log:
+        "logs/seqtk/{sample}_subsamp2run.log"
+    threads:
+        10
+    wrapper:
+        "0.72.0/bio/seqtk/subsample/pe"

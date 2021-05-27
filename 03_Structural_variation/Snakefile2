@@ -1,0 +1,195 @@
+#### BOWTIE2 MAPPING ####
+
+## run as snakemake --use-conda --cores 40 --verbose -s Snakefile2 --latency-wait 15
+
+SAMPLES=["eira"]
+# "SRR8074160", "SRR8074162", "SRR8074164", "SRR8074166", "SRR8074167", "SRR8074170", "SRR8074171", "SRR8074172", "SRR8074173", "SRR8074174", "SRR8074175"
+
+
+rule all:
+    input:
+        expand("02_mapped_reads/{sample}_eira_ref_subsamp_1run.bam", sample=SAMPLES),
+        expand("02_mapped_reads/{sample}_eira_ref_subsamp_2run.bam", sample=SAMPLES),
+        expand("03_sorted_reads/{sample}_eira_ref_subsamp_1run.sorted.bam", sample=SAMPLES),
+        expand("03_sorted_reads/{sample}_eira_ref_subsamp_2run.sorted.bam", sample=SAMPLES),
+        expand("04_addedRG/{sample}_eira_ref_subsamp_1run.rg.bam", sample=SAMPLES),
+        expand("04_addedRG/{sample}_eira_ref_subsamp_2run.rg.bam", sample=SAMPLES),
+        expand("05_dedup/{sample}_eira_ref_subsamp_1run.dedup.bam", sample=SAMPLES),
+        expand("05_dedup/{sample}_eira_ref_subsamp_1run.metrics.txt", sample=SAMPLES),
+        expand("05_dedup/{sample}_eira_ref_subsamp_2run.dedup.bam", sample=SAMPLES),
+        expand("05_dedup/{sample}_eira_ref_subsamp_2run.metrics.txt", sample=SAMPLES),
+        # expand("svtyper_lib_stats/{sample}.dedup.bam.pdf", sample=SAMPLES),
+        # expand("mosdepth/{sample}.mosdepth.global.dist.txt", sample=SAMPLES),
+        # expand("mosdepth/{sample}.mosdepth.region.dist.txt", sample=SAMPLES),
+        # expand("mosdepth/{sample}.mosdepth.summary.txt", sample=SAMPLES),
+        # expand("mosdepth/{sample}.regions.bed.gz", sample=SAMPLES),
+        # expand("mosdepth/{sample}.regions.bed.gz.csi", sample=SAMPLES)
+
+
+rule bowtie2_map_run1:
+    input:
+        sample=["01_trimmed_reads/{sample}_bc_qual_trmd.1.subsampled_1run.fastq.gz", "01_trimmed_reads/{sample}_bc_qual_trmd.2.subsampled_1run.fastq.gz"]
+    output:
+        "02_mapped_reads/{sample}_eira_ref_subsamp_1run.bam"
+    log:
+        "logs/02_mapping/bowtie2_{sample}_eira_ref_subsamp_1run.log"
+    params:
+        index="ref_genome/tayra_asm2_haplo.1",
+        extra="-q --local"
+    threads: 20
+    wrapper:
+        "0.67.0/bio/bowtie2/align"
+
+
+
+rule bowtie2_map_run2:
+    input:
+        sample=["01_trimmed_reads/{sample}_bc_qual_trmd.1.subsampled_2run.fastq.gz", "01_trimmed_reads/{sample}_bc_qual_trmd.2.subsampled_2run.fastq.gz"]
+    output:
+        "02_mapped_reads/{sample}_eira_ref_subsamp_2run.bam"
+    log:
+        "logs/02_mapping/bowtie2_{sample}_eira_ref_subsamp_2run.log"
+    params:
+        index="ref_genome/tayra_asm2_haplo.1",
+        extra="-q --local"
+    threads: 20
+    wrapper:
+        "0.67.0/bio/bowtie2/align"
+
+
+rule samtools_sort_run1:
+    input:
+        "02_mapped_reads/{sample}_eira_ref_subsamp_1run.bam"
+    output:
+        "03_sorted_reads/{sample}_eira_ref_subsamp_1run.sorted.bam"
+    log:
+        "logs/03_samtools/{sample}_eira_ref_subsamp_1run.bam.sort.log"
+    params:
+        "-m 4G"
+    threads: 16
+    wrapper:
+        "0.67.0/bio/samtools/sort"
+
+
+
+rule samtools_sort_run2:
+    input:
+        "02_mapped_reads/{sample}_eira_ref_subsamp_2run.bam"
+    output:
+        "03_sorted_reads/{sample}_eira_ref_subsamp_2run.sorted.bam"
+    log:
+        "logs/03_samtools/{sample}_eira_ref_subsamp_2run.bam.sort.log"
+    params:
+        "-m 4G"
+    threads: 16
+    wrapper:
+        "0.67.0/bio/samtools/sort"
+
+
+rule add_RG_run1:
+    input:
+        "03_sorted_reads/{sample}_eira_ref_subsamp_1run.sorted.bam"
+    output:
+        "04_addedRG/{sample}_eira_ref_subsamp_1run.rg.bam"
+    log:
+        "logs/04_picard/01_replace_rg/{sample}_eira_ref_subsamp_1run.log"
+    params:
+        "RGID=1 RGLB=lib1 RGPL=illumina RGPU={sample}_1 RGSM={sample}_1 VALIDATION_STRINGENCY=SILENT"
+    wrapper:
+        "0.67.0/bio/picard/addorreplacereadgroups"
+
+
+
+rule add_RG_run2:
+    input:
+        "03_sorted_reads/{sample}_eira_ref_subsamp_2run.sorted.bam"
+    output:
+        "04_addedRG/{sample}_eira_ref_subsamp_2run.rg.bam"
+    log:
+        "logs/04_picard/01_replace_rg/{sample}_eira_ref_subsamp_2run.log"
+    params:
+        "RGID=2 RGLB=lib2 RGPL=illumina RGPU={sample}_2 RGSM={sample}_2 VALIDATION_STRINGENCY=SILENT"
+    wrapper:
+        "0.67.0/bio/picard/addorreplacereadgroups"
+
+
+
+rule remove_dups_run1:
+    input:
+        "04_addedRG/{sample}_eira_ref_subsamp_1run.rg.bam"
+    output:
+        bam="05_dedup/{sample}_eira_ref_subsamp_1run.dedup.bam",
+        metrics="05_dedup/{sample}_eira_ref_subsamp_1run.metrics.txt"
+    log:
+        "logs/04_picard/02_dedup/{sample}_eira_ref_subsamp_1run.log"
+    params:
+        "REMOVE_DUPLICATES=true ASSUME_SORT_ORDER=coordinate TMP_DIR={sample}_1_tmp_picard VALIDATION_STRINGENCY=LENIENT \
+         MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=3000 MAX_RECORDS_IN_RAM=16000000 -Xmx32g CREATE_INDEX=TRUE"
+    wrapper:
+        "0.67.0/bio/picard/markduplicates"
+# try with 4000 files, ulimit -n 4096
+
+
+rule remove_dups_run2:
+    input:
+        "04_addedRG/{sample}_eira_ref_subsamp_2run.rg.bam"
+    output:
+        bam="05_dedup/{sample}_eira_ref_subsamp_2run.dedup.bam",
+        metrics="05_dedup/{sample}_eira_ref_subsamp_2run.metrics.txt"
+    log:
+        "logs/04_picard/02_dedup/{sample}_eira_ref_subsamp_2run.log"
+    params:
+        "REMOVE_DUPLICATES=true ASSUME_SORT_ORDER=coordinate TMP_DIR={sample}_2_tmp_picard VALIDATION_STRINGENCY=LENIENT \
+         MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=3000 MAX_RECORDS_IN_RAM=16000000 -Xmx32g CREATE_INDEX=TRUE"
+    wrapper:
+        "0.67.0/bio/picard/markduplicates"
+
+
+
+
+rule svtyper_lib_insert_size:
+    input:
+        "05_dedup/{sample}.dedup.bam"
+    output:
+        "06_svtyper_lib_stats/{sample}.dedup.bam.json"
+    log:
+        "logs/05_svtyper/{sample}.in_size.log"
+    conda:
+        "envs/smoove.yml"
+    shell:
+        "svtyper -B {input} -l {output} -n 2000000 --verbose"
+
+
+rule plot_lib_stats:
+    input:
+        "svtyper_lib_stats/{sample}.dedup.bam.json"
+    output:
+        "svtyper_lib_stats/{sample}.dedup.bam.pdf"
+    log:
+        "logs/stats/{sample}.plot_in_size.log"
+    conda:
+        "envs/smoove.yml"
+    shell:
+        "lib_stats.R {input} {output}"
+
+
+
+rule mosdepth_genomic_coverage:
+    input:
+        bam="05_dedup/{sample}.dedup.bam"
+    output:
+        protected("mosdepth/{sample}.mosdepth.global.dist.txt"),
+        protected("mosdepth/{sample}.mosdepth.region.dist.txt"),
+        protected("mosdepth/{sample}.mosdepth.summary.txt"),
+        protected("mosdepth/{sample}.regions.bed.gz"),
+        protected("mosdepth/{sample}.regions.bed.gz.csi")
+    log:
+        "logs/mosdepth/{sample}.coverage.log"
+    params:
+        windowsize=1000,
+        prefix="{sample}"
+    conda:
+        "envs/smoove.yml"
+    threads: 10
+    shell:
+        "mosdepth -t {threads} -n --fast-mode --by {params.windowsize} mosdepth/{params.prefix} {input.bam} 2> {log}"

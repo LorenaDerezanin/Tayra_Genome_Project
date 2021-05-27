@@ -1,0 +1,611 @@
+#### STRUCTURAL VARIANT CALLING ####
+
+# snakemake -np --use-conda --cores 80 --verbose -s Snakefile4
+
+# call manta, whamg, lumpy(smoove) jointly on wolverine libs and jointly on sable libs
+
+SPECIES=["eira", "zibellina", "gulo"]  # ,"eira", "zibellina", "gulo"  
+# SAMPLES={
+#   # "gulo": ["gulo_merged_is165_RG", "gulo_merged_is270_RG", "gulo_merged_is390_RG"],
+#   # "zibellina": ["zibellina_mrg_is250_RG", "zibellina_mrg_is500_RG"]
+  # "eira": ["eira_subsamp_1run", "eira_subsamp_2run"]
+# }
+
+CALLER=["manta", "lumpy", "wham"]
+
+rule all:
+    input:
+    #     expand("09_sv_analysis/{species}_manta/runWorkflow.py", species=SPECIES),
+    #     expand("09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf.gz", species=SPECIES),
+    #     expand("09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf.gz.tbi", species=SPECIES),
+    #     expand("09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_whamg/{species}_wham.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_smoove/{species}-smoove.genotyped.vcf.gz", species=SPECIES),
+        # expand("09_sv_analysis/{species}_smoove/{species}-smoove.genotyped.vcf.gz.csi", species=SPECIES),
+        # expand("09_sv_analysis/{species}_smoove/{species}-lumpy-cmd.sh", species=SPECIES),
+        # expand("09_sv_analysis/{species}_manta/02_converted/{species}_inv.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_manta/03_filter_pass/{species}_filt_pass.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_manta/04_GQ30/{species}_GQ30.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_manta/05_read_support/{species}_PR5_or_SR5.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_whamg/02_filtered/{species}_wham_filtered.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_whamg/03_genotyped/{species}_wham.genotyped.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_whamg/04_GQ30/{species}_wham_GQ30.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_whamg/05_total_support/{species}_wham_A5.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_smoove/01_results/{species}-smoove.genotyped.vcf", species=SPECIES),
+        # expand("09_sv_analysis/{species}_smoove/02_GQ30/{species}_smoove_GQ30.vcf", species=SPECIES),
+        # # expand("09_sv_analysis/{species}_smoove/03_read_support/{species}_smoove_SU5.vcf", species=SPECIES),
+        #   expand("10_sv_calls_merged_per_sample/03_call_sets_list/{species}.list", species=SPECIES),
+          # expand("10_sv_calls_merged_per_sample/04_sample_merged_callers/{species}_merged.vcf", species=SPECIES),
+          # expand("10_sv_calls_merged_per_sample/05_survivor_sample_stats/{species}.stats", species=SPECIES),
+          # expand("10_sv_calls_merged_per_sample/06_libs_merged/{species}_lib_mrg.vcf", species=SPECIES),
+          # expand("10_sv_calls_merged_per_sample/06_libs_merged_stats/{species}_lib_mrg.stats", species=SPECIES)
+          "11_sv_calls_all_species/guloninae_mrg.vcf",
+          "11_sv_calls_all_species/guloninae.stats",
+          # "11_sv_calls_all_species/guloninae_noNs.stats"
+
+
+
+
+
+###################################################################################################################
+
+### CALL STRUCTURAL VARIANTS ###
+
+rule manta_config:
+    input:
+        # f"" - formatted python3 string, substitutes variables with values
+        # lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]]
+        # "08_no_unloc_scf/{species}_no_unloc.bam"
+        "05_dedup/{species}.dedup.bam"
+    output:
+        "09_sv_analysis/{species}_manta/runWorkflow.py",
+    log:
+        "logs/06_manta/{species}_config.log"
+    params:
+        rundir="09_sv_analysis/{species}_manta",
+        ref="ref_genome/tayra_asm2_haplo.1.fasta"
+    conda:
+        "envs/manta.yml"
+    shell:
+        "configManta.py --bam {input} --referenceFasta {params.ref} --runDir {params.rundir} 2> {log}"
+
+
+
+rule manta_sv_call:
+    input:
+        "09_sv_analysis/{species}_manta/runWorkflow.py"
+    output:
+        "09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf.gz",
+        "09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf.gz.tbi"
+    log:
+        "logs/06_manta/{species}_sv_call.log"
+    params:
+        GB=100
+    threads: 20
+    conda:
+        "envs/manta.yml"
+    shell:
+        "python {input} -j {threads} -g {params.GB} 2> {log}"
+
+
+
+rule whamg_sv_call:
+    input:
+         # f"" - formatted python3 string, substitutes variables with values
+        # lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]]
+        # has to be a list of bams, separated by comma, no space
+        # "08_no_unloc_scf/{species}_no_unloc.bam"
+        "05_dedup/{species}.dedup.bam"
+    output:
+        "09_sv_analysis/{species}_whamg/{species}_wham.vcf"
+    log:
+        "logs/07_whamg/{species}_sv_call.log"
+    params:
+#         chrom="HiC_scaffold_1,HiC_scaffold_2,HiC_scaffold_3,HiC_scaffold_4,HiC_scaffold_5,HiC_scaffold_6,HiC_scaffold_7,HiC_scaffold_8,\
+# HiC_scaffold_9,HiC_scaffold_10,HiC_scaffold_11,HiC_scaffold_12,HiC_scaffold_13,HiC_scaffold_14,HiC_scaffold_15,\
+# HiC_scaffold_16,HiC_scaffold_17,HiC_scaffold_18,HiC_scaffold_19,HiC_scaffold_20",
+        ref="ref_genome/tayra_asm2_haplo.1.fasta"
+    threads: 10
+    conda:
+        "envs/whamg.yml"
+    shell:
+        "whamg -f {input} -a {params.ref} -c {params.chrom} -x {threads} > {output} 2> {log}"
+
+
+
+rule smoove_sv_call:
+    input:
+      # f"" - formatted python3 string, substitutes variables with values
+      # lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]]
+      # "08_no_unloc_scf/{species}/{species}_no_unloc.bam"
+      "08_no_unloc_scf/{species}_no_unloc.bam"
+    output:
+      "09_sv_analysis/{species}_smoove/{species}-smoove.genotyped.vcf.gz",
+      "09_sv_analysis/{species}_smoove/{species}-smoove.genotyped.vcf.gz.csi",
+      "09_sv_analysis/{species}_smoove/{species}-lumpy-cmd.sh"
+    log:
+      "logs/08_smoove/{species}_sv_call.log"
+    params:
+      bed="ref_genome/MusPutFur1.0_HiC_output_ranges.bed",
+      ref="ref_genome/tayra_asm2_haplo.1.fasta"
+    conda:
+      "envs/smoove.yml"
+    threads: 1
+    shell:
+      "smoove call -x --name {wildcards.species} --exclude {params.bed} --fasta {params.ref} -p {threads} --genotype {input} 2> {log}"
+
+# lumpy-filter removes alignments with low mapq, depth > 1000
+
+
+###################################################################################################################
+
+
+### FORMATTING AND FILTERING ###
+
+# unzip manta calls
+
+rule unzip_manta:
+    input:
+         "09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf.gz",
+    output:
+         "09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf"
+    log:
+        "logs/manta/01_results/{species}_unzip.log"
+    shell:
+        "gunzip {input} 2> {log}"
+
+
+# convert reciprocal inversions (some of the BND to INV) in manta calls for correct SV counts
+rule convert_INVs_manta:
+    input:
+        "09_sv_analysis/{species}_manta/results/variants/diploidSV.vcf"
+    output:
+        "09_sv_analysis/{species}_manta/02_converted/{species}_inv.vcf"
+    log:
+        "logs/06_manta/02_converted/{species}_inv_convert.log"
+    params:
+        ref="ref_genome/MusPutFur1.0_HiC.fasta"
+    shell:
+        "scripts/convertInversion.py scripts/samtools {params.ref} {input} > {output} 2> {log}"
+# running scripts originally from miniconda3/envs/manta/share/manta-1.6.0-0/libexec
+
+# $MANTA_LIBEXEC/convertInversion.py $MANTA_LIBEXEC/samtools \
+# $REF/MusPutFur1.0_HiC.fasta BFF_joint_call_diploidSV_chr_order.vcf > BFF_joint_call_diploidSV_chr_inv_fixed.vcf
+
+
+# filter manta calls with FILTER=PASS (sample passed all the sample-level filters for this SV event)
+rule filter_PASS_manta:
+    input:
+        "09_sv_analysis/{species}_manta/02_converted/{species}_inv.vcf"
+    output:
+        "09_sv_analysis/{species}_manta/03_filter_pass/{species}_filt_pass.vcf"
+    log:
+        "logs/06_manta/03_filter_pass/{species}_filt_pass.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools view -f PASS {input} > {output} 2> {log}"
+
+
+# filter out calls with genotype quality below 30
+
+rule filter_GQ30_manta:
+    input:
+        "09_sv_analysis/{species}_manta/03_filter_pass/{species}_filt_pass.vcf"
+    output:
+        "09_sv_analysis/{species}_manta/04_GQ30/{species}_GQ30.vcf"
+    log:
+        "logs/06_manta/04_GQ20/{species}_GQ30.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -e 'GQ<30' {input} > {output} 2> {log}"
+
+
+# include sites with read support 
+
+rule keep_PR_SR_manta:
+    input:
+        "09_sv_analysis/{species}_manta/04_GQ30/{species}_GQ30.vcf"
+    output:
+        "09_sv_analysis/{species}_manta/05_read_support/{species}_PR5_or_SR5.vcf"
+    log:
+        "logs/06_manta/05_read_support/{species}_PR5_or_SR5.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -i 'PR>=5 || SR>=5' {input} > {output} 2> {log}"
+
+
+
+
+### filter whamg calls before genotyping (otherwise the GQ info is lost)
+
+# script parameters: 
+  # size: filtered out calls <50bp and >2Mb
+  # filter out calls with less than 4 support. reads 
+  # max CW < 0.2 translocations
+
+rule filter_whamg:
+    input:
+        "09_sv_analysis/{species}_whamg/{species}_wham.vcf"
+    output:
+        "09_sv_analysis/{species}_whamg/02_filtered/{species}_wham_filtered.vcf"
+    log:
+        "logs/07_whamg/02_filtered/{species}_filtered.log"
+    shell:
+        "cat {input} | perl scripts/filtWhamG.pl > {output} 2> {log}"
+
+
+
+
+###################################################################################################################
+
+### GENOTYPE WHAMG SV CALL SETS ###
+
+rule svtyper_genotype_whamg:
+    input:
+        vcf="09_sv_analysis/{species}_whamg/02_filtered/{species}_wham_filtered.vcf",
+        bam=expand("08_no_unloc_scf/{species}_no_unloc.bam", species="{species}")
+        # bams=lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]] 
+    output:
+        gt_vcf="09_sv_analysis/{species}_whamg/03_genotyped/{species}_wham.genotyped.vcf",
+        # json="08_no_unloc_scf/{species}_no_unloc.bam.json"
+    log:   
+        "logs/07_whamg/{species}_genotyped.log"
+    params:
+        # outdir="09_sv_analysis/{species}_whamg/03_genotyped",
+        num_reads=2000000 # number of reads used for library insert size estimation
+    conda:
+        "envs/smoove.yml"
+    shell:
+        "svtyper -i {input.vcf} -B {input.bam} -l {input.bam}.json -n {params.num_reads} --verbose > {output.gt_vcf} 2> {log}"
+
+# {params.outdir}/
+# {output.json}
+
+# rule svtyper_genotype_whamg:
+#     input:
+#         vcf="10_sv_analysis/{species}_whamg/02_filtered/{species}_wham_filtered.vcf",
+#         bam=expand("09_no_unloc_scf/{species}_no_unloc.bam", species="{species}")
+#     output:
+#         gt_vcf="10_sv_analysis/{species}_whamg/03_genotyped/{species}_wham.genotyped.vcf",
+#     log:   
+#         "logs/07_whamg/{species}_genotyped.log"
+#     params:
+#         num_reads=2000000 # number of reads used for library insert size estimation
+#     conda:
+#         "envs/smoove.yml"
+#     shell:
+#         "svtyper -i {input.vcf} -B {input.bam} -l {input.bam}.json -n {params.num_reads} --verbose > {output.gt_vcf} 2> {log}"
+
+
+# svtyper -B $(ls sample*.bam | paste -sd",") -i lumpy.raw.out.vcf > project.gt.vcf
+
+# svtyper ignores INS
+
+###################################################################################################################
+
+# filter out calls with genotype quality below 30
+
+rule filter_GQ30_whamg:
+    input:
+        "09_sv_analysis/{species}_whamg/03_genotyped/{species}_wham.genotyped.vcf"
+    output:
+       "09_sv_analysis/{species}_whamg/04_GQ30/{species}_wham_GQ30.vcf"
+    log:
+        "logs/07_whamg/04_GQ30/{species}_GQ30.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -e 'GQ<30' {input} > {output} 2> {log}"
+
+
+
+
+# keep calls with A=total pieces of evidence (total support, INFO field “A” in vcf), minimun A<5
+
+rule total_support_A_whamg:
+    input:
+        "09_sv_analysis/{species}_whamg/04_GQ30/{species}_wham_GQ30.vcf"
+    output:
+        "09_sv_analysis/{species}_whamg/05_total_support/{species}_wham_A5.vcf"
+    log:
+        "logs/07_whamg/05_total_support/{species}_A5.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -e 'INFO/A<5' {input} > {output} 2> {log}"
+
+
+
+### filter smoove calls
+
+# rule unzip_smoove:
+    # input:
+    #     "09_sv_analysis/{species}_smoove/01_results/{species}-smoove.genotyped.vcf.gz"
+    # output:
+    #     "09_sv_analysis/{species}_smoove/01_results/{species}-smoove.genotyped.vcf"
+    # log:
+    #     "logs/08_smoove/01_results/{species}_unzip.log"
+    # shell:
+    #     "gunzip {input} 2> {log}"
+
+
+# filter out calls with genotype quality below 30
+
+rule filter_GQ30_smoove:
+    input:
+        "09_sv_analysis/{species}_smoove/01_results/{species}-smoove.genotyped.vcf"
+    output:
+        "09_sv_analysis/{species}_smoove/02_GQ30/{species}_smoove_GQ30.vcf"
+    log:
+        "logs/08_smoove/02_GQ30/{species}_GQ30.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -e 'GQ<30' {input} > {output} 2> {log}"
+
+
+
+# filter read support SU<10
+
+rule read_support_SU_smoove:
+    input:
+        "09_sv_analysis/{species}_smoove/02_GQ30/{species}_smoove_GQ30.vcf"
+    output:
+        "09_sv_analysis/{species}_smoove/03_read_support/{species}_smoove_SU5.vcf"
+    log:
+        "logs/08_smoove/03_read_support/{species}_SU5.log"
+    conda:
+        "envs/bcftools.yml"
+    shell:
+        "bcftools filter -e 'INFO/SU<5' {input} > {output} 2> {log}"
+
+
+
+
+###################################################################################################################
+
+
+### MERGE CALLS PER LIBRARY ###
+
+# split gulo and zibellina into separate vcf files:
+        # list libs
+
+# zip and index      
+# bgzip gulo_wham_A10.vcf
+# tabix -p vcf gulo_wham_A10.vcf.gz
+
+# for line in $(cat gulo_libs_list.txt)
+# do
+#   bcftools view gulo_wham_A10.vcf.gz --force-samples --samples $line -Oz -o gulo_wham_A10_"$line".vcf.gz
+# done
+
+
+# # merge them for each caller
+
+# rule merge_libs_for_smoove:
+#     input:
+#         "09_sv_analysis/{species}_smoove/03_read_support/{species}_smoove_SU5.vcf"
+#     output:
+#     log:
+#     shell:
+
+
+#     for line in $(cat BFF_sample_list.txt)
+# do 
+#   bcftools view $VCF/BFF_joint_call_diploidSV_PR5SR5_srt.vcf --samples $line -Ov -o $VCF/"$line"_PR5SR5_srt.vcf
+# done
+
+
+###################################################################################################################
+
+## SURVIVOR MERGE PER SAMPLE/SPECIES ##
+
+
+# extract chromosome scaffolds from eira vcf files
+
+# for line in $(cat scf_list.txt)
+# do 
+#     bcftools view eira_wham_A10.vcf --targets $line -Ov -o eira_wham_A10_"$line".vcf
+# done
+
+# bcftools concat -Ov \
+# *_HiC_scaffold_2.vcf \
+# *_HiC_scaffold_1.vcf \
+# *_HiC_scaffold_3.vcf \
+# *_HiC_scaffold_6.vcf \
+# *_HiC_scaffold_8.vcf \
+# *_HiC_scaffold_12.vcf \
+# *_HiC_scaffold_9.vcf \
+# *_HiC_scaffold_15.vcf \
+# *_HiC_scaffold_19.vcf \
+# *_HiC_scaffold_14.vcf \
+# *_HiC_scaffold_13.vcf \
+# *_HiC_scaffold_16.vcf \
+# *_HiC_scaffold_20.vcf \
+# *_HiC_scaffold_4.vcf \
+# *_HiC_scaffold_5.vcf \
+# *_HiC_scaffold_7.vcf \
+# *_HiC_scaffold_11.vcf \
+# *_HiC_scaffold_18.vcf \
+# *_HiC_scaffold_17.vcf \
+# *_HiC_scaffold_10.vcf > eira_wham_chr_order.vcf
+
+# sort vcf files
+# bcftools sort -Ov {input} -o {output} 
+
+# for f in eira_subsamp_2run*
+# do
+#     base=$(basename $f ".vcf")
+#     bcftools sort -Ov $f -o ${base}_srt.vcf
+# done
+
+
+# extract high cov. regions from sable and wolverine libs
+# awk '($4 > 100)' zibellina_mrg_is250_RG_no_unloc.regions.bed | sort -nrk4,4 > zibellina_mrg_is250_RG_no_unloc_high_cov_regions.bed
+# cut -f 1,2,3 zibellina_mrg_is250_RG_no_unloc_high_cov_regions.bed
+# cat zibellina_mrg_is250_RG_no_unloc_high_cov_regions_srt.bed  zibellina_mrg_is500_RG_no_unloc_high_cov_regions_srt.bed | sort | uniq -d \
+# > zibellina_mrg_libs_high_cov_srt_uniq.bed
+# cat zibellina_mrg_libs_high_cov_srt_uniq.bed MusPutFur1.0_HiC_output_ranges.bed > zibellina_gaps_high_cov_exclude.bed
+# bedtools intersect -v -a vcf -b bed
+
+
+
+
+# merge SV events per sample, called by at least 2 callers
+
+# list all SV call sets per sample 
+rule list_sample_sv_call_sets:
+    input:
+        expand("10_sv_calls_merged_per_sample/02_sorted_gaps_high_cov_rm/{species}_{caller}_srt.vcf", species="{species}", caller=CALLER)
+    output:
+        "10_sv_calls_merged_per_sample/03_call_sets_list/{species}.list"
+    log:
+        "logs/merging/{species}_list.log"
+    shell:
+        "ls {input} > {output} 2> {log}"
+
+
+
+
+# merge SVs with start/end within 1000 bp, called by at least 2 callers, same SV type, min.size 50 bp
+
+rule survivor_merge:
+    input:
+        "10_sv_calls_merged_per_sample/03_call_sets_list/{species}.list"
+    output:
+        "10_sv_calls_merged_per_sample/04_sample_merged_callers/{species}_merged.vcf"
+    log:
+        "logs/merging/{species}_surv.log"
+    params:
+        "1000 2 1 0 0 50"
+    conda:
+        "envs/survivor.yml"
+    shell:
+        "SURVIVOR merge {input} {params} {output} 2> {log}"
+
+
+
+
+# run stats per sample
+rule survivor_sample_stats:
+    input:
+        "10_sv_calls_merged_per_sample/04_sample_merged_callers/{species}_merged.vcf"
+    output:
+        "10_sv_calls_merged_per_sample/05_survivor_sample_stats/{species}.stats"
+    log:
+        "logs/merging/{species}_stats.log"
+    params:
+        "50 -1 -1"
+    conda:
+        "envs/survivor.yml"
+    shell:
+        "SURVIVOR stats {input} {params} {output} 2> {log}"
+
+
+
+
+# merge tayra subsamp1 and subsamp2
+
+# SURVIVOR merge eira_subsamp.list 1000 2 1 0 0 50 eira_subsamps_merged.vcf
+# kept intersection of two subsamples
+
+
+# merge SVs with start/end within 1000 bp, among diff. libraries, same SV type, min.size 50 bp -  union of libs
+
+# make list of diff. lib vcfs
+
+# rule survivor_merge_diff_libs:
+#     input:
+#         "10_sv_calls_merged_per_sample/04_sample_merged_callers/{species}_libs.list"
+#     output:
+#         "10_sv_calls_merged_per_sample/06_libs_merged/{species}_lib_mrg.vcf"
+#     log:
+#         "logs/merging/{species}_surv_lib.log"
+#     params:
+#         "1000 0 1 0 0 50"
+#     conda:
+#         "envs/survivor.yml"
+#     shell:
+#         "SURVIVOR merge {input} {params} {output} 2> {log}"
+
+
+# rule survivor_lib_stats:
+#     input:
+#         "10_sv_calls_merged_per_sample/06_libs_merged/{species}_lib_mrg.vcf"
+#     output:
+#         "10_sv_calls_merged_per_sample/06_libs_merged_stats/{species}_lib_mrg.stats"
+#     log:
+#         "logs/merging/{species}_lib_stats.log"
+#     params:
+#         "50 -1 -1"
+#     conda:
+#         "envs/survivor.yml"
+#     shell:
+#         "SURVIVOR stats {input} {params} {output} 2> {log}"
+
+
+
+# merge SVs with start/end within 1000 bp, among diff. species, same SV type, min.size 50 bp
+
+# make list of species vcfs 
+
+rule survivor_merge_species:
+    input:
+        "10_sv_calls_merged_per_sample/04_sample_merged_callers/guloninae_mrg.list"
+    output:
+        "11_sv_calls_all_species/guloninae_mrg.vcf"
+    log:
+        "logs/merging/guloninae_surv_mrg.log"
+    params:
+        "1000 0 1 0 0 50"
+    conda:
+        "envs/survivor.yml"
+    shell:
+        "SURVIVOR merge {input} {params} {output} 2> {log}"
+
+
+
+rule survivor_species_stats:
+    input:
+        "11_sv_calls_all_species/guloninae_mrg.vcf"
+    output:
+        "11_sv_calls_all_species/guloninae.stats"
+    log:
+        "logs/merging/guloninae_stats.log"
+    params:
+        "50 -1 -1"
+    conda:
+        "envs/survivor.yml"
+    shell:
+        "SURVIVOR stats {input} {params} {output} 2> {log}"
+
+
+
+# fix header
+
+# remove "N" streches repeating at least 30 times (found in DELs usually)
+# grep -vE 'N{30,}' guloninae_mrg_h.vcf > guloninae_mrg_h_noNs.vcf
+# rm TRA
+# grep -v "SVTYPE=TRA" guloninae_mrg_h_noNs.vcf > guloninae_mrg_h_noNs_noTRA.vcf
+
+# prep matrix for UpSetplot
+ # perl -ne 'print "$1\n" if /SUPP_VEC=([^,;]+)/' guloninae_mrg_h_noNs_noTRA.vcf | sed -e 's/\(.\)/\1 /g' > guloninae_mrg_h_noNs_noTRA_overlap.txt
+
+
+
+rule survivor_species_stats_noNs:
+    input:
+        "11_sv_calls_all_species/guloninae_mrg_h_noNs.vcf"
+    output:
+        "11_sv_calls_all_species/guloninae_noNs.stats"
+    log:
+        "logs/merging/guloninae_noNs_stats.log"
+    params:
+        "50 -1 -1"
+    conda:
+        "envs/survivor.yml"
+    shell:
+        "SURVIVOR stats {input} {params} {output} 2> {log}"
