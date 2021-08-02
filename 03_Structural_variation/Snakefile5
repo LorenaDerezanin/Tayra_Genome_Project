@@ -127,6 +127,10 @@ rule vep_annotate_conda:
 # grep -v "^##" guloninae_mrg_h_noNs_noTRA_vep_annot.vcf | grep -P "^#|SUPP_VEC=001" > zibellina_private_SVs_noTRA.vcf
 
 
+# prep counts of total heterozygous and homozygous SV calls per species
+grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=110|SUPP_VEC=100" > eira_total_SVs.vcf
+grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=011|SUPP_VEC=001" > zibellina_total_SVs.vcf
+grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=110|SUPP_VEC=011|SUPP_VEC=010" > gulo_total_SVs.vcf
 
 
 
