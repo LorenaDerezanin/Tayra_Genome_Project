@@ -1,5 +1,5 @@
 
-## CAFE - run on Allegro, conda cafe
+## CAFE - ran in conda env cafe
 
 
 # estimate one or more birth-death (λ) parameters for the given ultrametric sp. tree and gene family counts
@@ -68,10 +68,6 @@ python cafe_scripts/cafetutorial_report_analysis.py -i report_run2.cafe -r 0 -o 
 
 
 # plot expansions/contractions on the tree
-
-ggtree
-treeio
-
 
 python3.7 cafe_scripts/CAFE_fig/CAFE_fig.py report_run2.cafe -pf 0.01 --dump test_tree/ -g .svg 
 
