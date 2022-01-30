@@ -1,12 +1,14 @@
 
-## CAFE - ran in conda env cafe
+## GENE FAMILY EVOLUTION ANALYSIS
+
+# cafe ran in conda env cafe
 
 
 # estimate one or more birth-death (λ) parameters for the given ultrametric sp. tree and gene family counts
 # λ parameter describes the probability that a gene will be gained or lost
 
 
-# limit memory usage and CPUs, super greedy tool
+# limit memory usage and CPUs
 # no underscores in species names - cafe crashes, fix names
 
 
@@ -21,13 +23,13 @@ load -i gene_counts_all_sp_noNA_sp_counted.txt -p 0.01 -t 10 -l log.txt
 # load ultrametric tree
 tree (((canfam:40.75,(((eirabarbara:8.19,(gulogulo:7.11,marteszibellina:7.11):1.09):3.97,mustelaputoriusfuro:12.16):19.66,(miroungaangustirostris:16.65,odobenusrosmarus:16.65):15.18):8.92):13.25,feliscatus:54):42,musmusculus:96)
 
-# david's tree
+# species tree
 tree ((((odobenusrosmarus:1.0,miroungaangustirostris:1.0):3.0,(mustelaputoriusfuro:3.0,(eirabarbara:2.0,(marteszibellina:1.0,gulogulo:1.0):1.0):1.0):1.0):1.0,canfam:5.0):1.0,feliscatus:6.0)
 
 # search for 1-parameter model
 lambda -s -t (((1,(((1,(1,1)1)1,1)1,(1,1)1)1)1,1)1,1)
 
-# david's tree
+# species tree
 lambda -s -t ((((1,1)1,(1,(1,(1,1)1)1)1)1,1)1,1)
 
 report report_run
@@ -43,8 +45,6 @@ sed -E "s/([0-9]+at[0-9]+)([^,]+),?/\1\t\2\n/g"
 
 # get results, sort by p-value
 grep 'at40674' report_run.cafe | sort -nk3
-
-
 
 
 

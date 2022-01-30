@@ -1,7 +1,7 @@
 
 #### GENE FAMILY ANALYSIS ####
 
-# extract ortologs for each sp., remove dups, convert other statuses into counts
+# extract ortologs for each species, rm dups, convert other statuses into counts
 for f in *_busco4/full_table*
 do
   dir_name=$(dirname $f)
