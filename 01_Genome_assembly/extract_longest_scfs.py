@@ -1,14 +1,14 @@
-# done in Supernova_asm_tayra conda env
+# ran in Supernova_asm_tayra conda env
 # python 3.7.3
-# run as time python ../08_circos_plots/extract_scfs_by_length.py 
+# run as python ../08_circos_plots/extract_scfs_by_length.py 
 
 
 from Bio import SeqIO
 
-longest_scaffolds = [] # empty list
+longest_scaffolds = [] 
 
 for record in SeqIO.parse("tayra_asm2_haplo.1.fasta", "fasta"):
-    if len(record.seq) >= 100000 : # e.g. 1 Mbp long
+    if len(record.seq) >= 100000 : 
         longest_scaffolds.append(record) # add record to the list
 
 print("Found %i long scaffolds" % len(longest_scaffolds))
