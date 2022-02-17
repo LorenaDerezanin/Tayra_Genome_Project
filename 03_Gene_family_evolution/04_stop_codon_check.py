@@ -9,4 +9,5 @@ from textwrap import wrap
 dna_codon_table = pd.read_csv('DNA_codon_table.csv', header=None, index_col=0, squeeze=True).to_dict()
 
 for record in SeqIO.parse('', "fasta"):
-    
+        s =
+        dna_codons = wrap(s, 3)
