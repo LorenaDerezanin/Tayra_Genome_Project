@@ -71,26 +71,6 @@ rule vep_annotate_conda:
 # --variant_class >& zibellina_vep_annot.log
 
 
-# vep -i Mustela_eversmanni_merged_noNs.vcf \
-# --force_overwrite \
-# --dir_cache $CACHE \
-# --species mustela_putorius_furo \
-# --gff $LIFTOFF/MusPutFur1.0_HiC_ensembl101_liftoff_srt_srn.gff.gz \
-# --fasta $REF/MusPutFur1.0_HiC.fasta \
-# --o eversmanni_noNs_vep_annot.vcf \
-# --stats_text eversmanni_vep_annot.txt \
-# --max_sv_size 200000000 \
-# --vcf \
-# --format vcf \
-# --overlaps \
-# --protein \
-# --gene_phenotype \
-# --coding_only \
-# --per_gene \
-# --symbol \
-# --sift b \
-# --fork 4 \
-# --variant_class >& M_eversmanni_vep_annot.log
 
 
 # vep -i guloninae_mrg_h_noNs.vcf \
@@ -118,7 +98,7 @@ rule vep_annotate_conda:
 # remove TRA
 
 
-#  "grep -v '^##' {input} | grep -P '^#|ENSMPUG' > {output} 2> {log}" 
+# "grep -v '^##' {input} | grep -P '^#|ENSMPUG' > {output} 2> {log}" 
 
 # grep -v "^##" guloninae_mrg_h_noNs_noTRA_vep_annot.vcf | grep -P "^#|SUPP_VEC=100" > eira_private_SVs_noTRA.vcf
 
@@ -128,9 +108,9 @@ rule vep_annotate_conda:
 
 
 # prep counts of total heterozygous and homozygous SV calls per species
-grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=110|SUPP_VEC=100" > eira_total_SVs.vcf
-grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=011|SUPP_VEC=001" > zibellina_total_SVs.vcf
-grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=110|SUPP_VEC=011|SUPP_VEC=010" > gulo_total_SVs.vcf
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=110|SUPP_VEC=100" > eira_total_SVs.vcf
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=101|SUPP_VEC=011|SUPP_VEC=001" > zibellina_total_SVs.vcf
+# grep -v "^##" guloninae_mrg_h_noNs_noTRA.vcf | grep -P "^#|SUPP_VEC=111|SUPP_VEC=110|SUPP_VEC=011|SUPP_VEC=010" > gulo_total_SVs.vcf
 
 
 
@@ -176,6 +156,6 @@ rule cut_SV_info_cols:
 
 
 # get zygosity cols
-cut -f10 eira_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > eira_zygosity
-cut -f11 gulo_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > gulo_zygosity
-cut -f12 zibellina_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > zibellina_zygosity
+# cut -f10 eira_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > eira_zygosity
+# cut -f11 gulo_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > gulo_zygosity
+# cut -f12 zibellina_total_SVs.vcf | grep -o "^[0-9]/[0-9]" > zibellina_zygosity

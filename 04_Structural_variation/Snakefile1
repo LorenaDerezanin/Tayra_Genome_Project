@@ -13,9 +13,7 @@ rule all:
         # expand("01_trimmed_reads/{sample}_2.fastq.gz_trimming_report.txt", sample=SAMPLES)
         expand("01_trimmed_reads/{sample}.1.subsampled_1run.fastq.gz", sample=SAMPLES),
         expand("01_trimmed_reads/{sample}.2.subsampled_1run.fastq.gz", sample=SAMPLES),
-        expand("01_trimmed_reads/{sample}.1.subsampled_2run.fastq.gz", sample=SAMPLES),
-        expand("01_trimmed_reads/{sample}.2.subsampled_2run.fastq.gz", sample=SAMPLES)
-
+        
 
 rule trim_galore_pe_reads:
     input:
@@ -51,19 +49,4 @@ rule downsample_reads_1run:
         "0.72.0/bio/seqtk/subsample/pe"
 
 
-rule downsample_reads_2run:
-    input:
-        f1="01_trimmed_reads/{sample}_R1_val_1.fq.gz", 
-        f2="01_trimmed_reads/{sample}_R2_val_2.fq.gz"
-    output:
-        f1="01_trimmed_reads/{sample}.1.subsampled_2run.fastq.gz",
-        f2="01_trimmed_reads/{sample}.2.subsampled_2run.fastq.gz"
-    params:
-        n=510000000,
-        seed=54321
-    log:
-        "logs/seqtk/{sample}_subsamp2run.log"
-    threads:
-        10
-    wrapper:
-        "0.72.0/bio/seqtk/subsample/pe"
+

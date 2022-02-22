@@ -1,7 +1,7 @@
 #### GET CHROMOSOME-SCAFFOLDS ####
 
 ## run as snakemake --use-conda --cores 20 --verbose -s Snakefile3 
-SAMPLES=["eira_eira_ref_subsamp_1run", "eira_eira_ref_subsamp_2run"] # "zibellina_mrg_is250", "zibellina_mrg_is500"
+SAMPLES=["eira_eira_ref_subsamp_1run"] # "zibellina_mrg_is250", "zibellina_mrg_is500"
 CHROMS=range(1, 21)
 # SPECIES=["eira"]
 

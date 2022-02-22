@@ -8,7 +8,7 @@ SPECIES=["eira", "zibellina", "gulo"]  # ,"eira", "zibellina", "gulo"
 # SAMPLES={
 #   # "gulo": ["gulo_merged_is165_RG", "gulo_merged_is270_RG", "gulo_merged_is390_RG"],
 #   # "zibellina": ["zibellina_mrg_is250_RG", "zibellina_mrg_is500_RG"]
-  # "eira": ["eira_subsamp_1run", "eira_subsamp_2run"]
+  # "eira": ["eira_subsamp_1run"]
 # }
 
 CALLER=["manta", "lumpy", "wham"]
@@ -91,7 +91,6 @@ rule manta_sv_call:
 
 rule whamg_sv_call:
     input:
-         # f"" - formatted python3 string, substitutes variables with values
         # lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]]
         # has to be a list of bams, separated by comma, no space
         # "08_no_unloc_scf/{species}_no_unloc.bam"
@@ -115,7 +114,6 @@ rule whamg_sv_call:
 
 rule smoove_sv_call:
     input:
-      # f"" - formatted python3 string, substitutes variables with values
       # lambda wildcards: [f"08_no_unloc_scf/{wildcards.species}/{sample}_no_unloc.bam" for sample in SAMPLES[wildcards.species]]
       # "08_no_unloc_scf/{species}/{species}_no_unloc.bam"
       "08_no_unloc_scf/{species}_no_unloc.bam"
@@ -436,7 +434,7 @@ rule read_support_SU_smoove:
 # sort vcf files
 # bcftools sort -Ov {input} -o {output} 
 
-# for f in eira_subsamp_2run*
+# for f in eira_subsamp_1run*
 # do
 #     base=$(basename $f ".vcf")
 #     bcftools sort -Ov $f -o ${base}_srt.vcf
