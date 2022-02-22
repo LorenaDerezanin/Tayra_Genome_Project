@@ -7,8 +7,9 @@
 
 # samplesheet.csv needs to be provided, create one at 
 # https://support.10xgenomics.com/de-novo-assembly/software/pipelines/latest/using/bcl2fastq-direct
+# PATH= abs.path to mustelids/tayra/MDC/191108_A00643_0023_AHHCJVDRXX 
 
-supernova mkfastq --run /home/derezanin/species_comp/caniformes/mustelids/tayra/MDC/191108_A00643_0023_AHHCJVDRXX \
+supernova mkfastq --run $PATH \
 --id tayra --csv samplesheet.csv --qc --ignore-dual-index --localmem=50 \
 --jobmode=local -r 12 -p 10 -w 12
 
@@ -19,7 +20,7 @@ supernova mkfastq --run /home/derezanin/species_comp/caniformes/mustelids/tayra/
 
 # TEST ASSEMBLY RUN with RAW DATA #
 
-# WD=/home/derezanin/species_comp/caniformes/mustelids/tayra/MDC/tayra/outs/fastq_path/HHCJVDRXX/tayra
+# WD= abs.path to mustelids/tayra/MDC/tayra/outs/fastq_path/HHCJVDRXX/tayra
 
 ### FIRST ASM RUN ###
 
@@ -31,7 +32,7 @@ supernova run --id=tayra --sample=tayra --lanes=1 --fastqs=$WD --localcores=32 -
 # run mkoutput to create asm fasta files from binary data
 supernova mkoutput \
         --style=pseudohap2 \
-        --asmdir=/data/fg2/derezanin/species_comp/caniformes/mustelids/tayra/MDC/tayra/outs/fastq_path/HHCJVDRXX/tayra/tayra/outs/assembly \
+        --asmdir= # abs. path to tayra/outs/assembly \
         --outprefix=tayra_asm_haplo 
 # pseudohap2 calls 2 separate haplotypes
 # time: 18 min (8.12.19)

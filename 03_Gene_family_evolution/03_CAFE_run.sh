@@ -7,10 +7,8 @@
 # estimate one or more birth-death (λ) parameters for the given ultrametric sp. tree and gene family counts
 # λ parameter describes the probability that a gene will be gained or lost
 
-
 # limit memory usage and CPUs
 # no underscores in species names - cafe crashes, fix names
-
 
 # set up config file for cafe - run_cafe_params.txt:
 
