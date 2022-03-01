@@ -1,0 +1,17 @@
+name: survivor
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - libgcc-ng=9.3.0=h24d8f2e_15
+  - libgomp=9.3.0=h24d8f2e_15
+  - libiconv=1.16=h516909a_0
+  - libstdcxx-ng=9.3.0=hdf63c60_15
+  - nano=2.9.8=hddfc1eb_1001
+  - ncurses=6.2=he1b5a44_1
+  - survivor=1.0.7=he513fc3_0
+  - zlib=1.2.11=h516909a_1007
+prefix: /home/fb4/derezanin/miniconda3/envs/survivor

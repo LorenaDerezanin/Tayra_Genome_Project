@@ -1,0 +1,14 @@
+name: whamg
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - libgcc-ng=9.3.0=h5dbcf3e_17
+  - libgomp=9.3.0=h5dbcf3e_17
+  - libstdcxx-ng=9.3.0=h2ae2ef3_17
+  - wham=1.8.0.1.2017.05.03=h8b12597_1
+  - zlib=1.2.11=h516909a_1010
+prefix: /home/fb4/derezanin/miniconda3/envs/whamg
