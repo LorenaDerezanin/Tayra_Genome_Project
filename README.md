@@ -10,4 +10,6 @@ Preprint available at [bioRxiv](https://doi.org/10.1101/2021.09.27.461651).
 * 03_Gene_family_evolution - inferring gene gains/losses from BUSCO output (authors: Lorena Derezanin and Dorina Meneghini)
 * 04_Structural_variation - snakefiles with ordered steps for sequence preparation, structural variant calling, and functional annotation (author: Lorena Derezanin)
 
+Additional scripts can be found at https://github.com/mahajrod/MACE
+
 
