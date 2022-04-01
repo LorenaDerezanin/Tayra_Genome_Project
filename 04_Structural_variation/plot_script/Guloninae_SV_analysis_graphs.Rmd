@@ -1,0 +1,350 @@
+---
+title: "Structural Variation Analysis in the Subfamily Guloninae"
+author: "Lorena Derezanin"
+date: "9/21/2020"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+# initialize renv for a private pkg list and project reproducibility
+#renv::init()
+# renv::activate()
+
+# load packages
+# install.packages("BiocManager")
+library(BiocManager)
+options(repos = BiocManager::repositories()) # Bioconductor repo added to renv
+
+# renv::install("tidyverse")
+# renv::install("stringi")
+# renv::install("xfun")
+# renv::install("data.table")
+# renv::install("RColorBrewer")
+# renv::install("VennDiagram")
+# renv::install("UpSetR")
+# renv::install("patchwork")
+# renv::install("viridis")
+# renv::install("wesanderson")
+# renv::install("pheatmap")
+# renv::install("ggtree")
+
+library(data.table)
+library(tinytex)
+library(knitr)
+library(stringi)
+library(UpSetR)
+library(tidyverse)
+library(RColorBrewer)
+library(VennDiagram)
+library(grid)
+library(patchwork)
+library(viridis)
+library(wesanderson)
+library(pheatmap)
+library(patchwork)
+
+
+```
+
+
+
+### Shared and private SVs in all gulonine species ###
+
+
+
+``` {r guloninae_upset_plot, echo=FALSE}
+
+
+
+# png(file = "UpSetR_Guloninae_noNs_noTRA.png", width = 2100, height = 1500, res = 300)
+
+survivor_matrix <- read.table("input_data/guloninae_mrg_h_noNs_noTRA_overlap.txt")
+# SV_info <- read.csv("input_data/", header = F, sep = "\t")
+colnames(survivor_matrix) <- c("Eira_barbara","Gulo_gulo","Martes_zibellina") 
+                           
+
+#survivor_matrix_all_cols <- survivor_matrix %>% mutate(SV_MantaIDs = mantaIDs) %>% select(SV_MantaIDs, everything())
+
+upset(
+      survivor_matrix, 
+      nsets = 3, nintersects = 16, 
+      mb.ratio = c(0.7, 0.3), matrix.color = "brown1", 
+      sets.bar.color = "cornflowerblue", order.by = "freq", 
+      keep.order = FALSE, set_size.show = F, 
+      text.scale = 1.0, point.size = 2, line.size = 1,
+      
+      )
+
+# dev.off()
+
+
+```
+
+
+
+### Total SV counts in gulonines
+
+
+
+```{r guloninae_total_SV_counts, echo=FALSE}
+
+total_SV_counts_guloninae <- read.table("input_data/private_SV_counts_guloninae.csv", sep = ",", header = T) %>%
+                              select(-Total) %>%
+                              rename_all(toupper) %>%
+                              pivot_longer(!SPECIES, names_to = "SV_type", values_to = "Count")
+                              # extend table into longer format (transpose SV types and counts per sp)
+                              
+                              
+# png(file = "private_SV_counts_guloninae.png", width = 1100, height = 1200, res = 200)
+
+total_SV_counts_guloninae %>%
+        ggplot(aes(x = factor(SPECIES), y = Count , fill = factor(SV_type))) +
+            geom_bar(stat = "identity", position = "dodge") +
+            scale_fill_manual(values = c("cornflowerblue", "brown1", "green4", "darkgoldenrod1"), name = "SV type") +
+            labs(x = "Species", y = "Number of SVs") +
+            theme_light() +
+            theme(axis.title.x = element_text(size = 8, vjust = -0.90),
+                  axis.title.y = element_text(size = 8, vjust = 1.90),
+                  legend.margin = margin(0.5, 0.5, 0.5,0.5)) +
+            theme(plot.title = element_text(size = 10,
+                  margin = margin(0, 0, 6, 0))) +
+            facet_grid(. ~ SV_type, scales= "free") +
+            facet_wrap(. ~ SV_type, ncol=2, nrow = 2, scales= "free") # allow diff. scales in plot, (y-axis in this case) 
+
+# dev.off()  
+         
+
+```
+
+
+
+### SV length distribution
+
+
+
+``` {r guloninae_sv_lenght_distro, echo=FALSE}
+
+SV_length_distro_guloninae <- read.table("input_data/sv_len_distribution_guloninae.csv", sep = ",", header = T) %>%
+                              rename_all(toupper) %>%
+                              pivot_longer(!c(SPECIES,LEN), names_to = "SV_type", values_to = "Count")
+                              # extend table into longer format (transpose SV types and counts per sp)
+  
+# png(file = "SV_length_distro_guloninae.png", width = 1400, height = 2000, res = 200)
+
+SV_length_distro_guloninae %>%
+        group_by(LEN) %>%
+        mutate(LEN = factor(LEN), levels = unique(LEN)) %>%
+        ggplot(aes(x = factor(LEN), y = Count , fill = factor(SV_type))) +
+            geom_col(position = "dodge") +
+            scale_fill_manual(values = c("cornflowerblue", "brown1", "green4", "darkgoldenrod1"), name = "SV type") +
+            labs(x = "SV size bins", y = "Number of SVs") +
+            theme_light() +
+            theme(axis.title.x = element_text(size = 8, vjust = -0.90),
+                  axis.title.y = element_text(size = 8, vjust = 1.90),
+                  legend.margin = margin(0.5, 0.5, 0.5,0.5)) +
+            theme(plot.title = element_text(size = 10,
+                  margin = margin(0, 0, 6, 0))) +
+            facet_grid(. ~ SV_type, scales= "free") +
+            facet_wrap(. ~ SPECIES, ncol = 1, nrow = 3, scales= "free") # allow diff. scales in plot, y-axis in this case 
+
+# dev.off()  
+
+
+
+
+
+
+
+```
+
+
+### Heatmap with gene categories 
+
+
+
+```{r SV gene categories heatmap, echo=FALSE}
+
+sv_func_groups_genes <- as.matrix(read.table("input_data/sv_func_groups_genes_guloninae.csv", sep = ",", header = T,  row.names = 1))
+
+# png(file = "SV_func_groups_genes_heatmap_guloninae.png", width = 2000, height = 1600, res = 300)
+pheatmap(t(sv_func_groups_genes), scale = "none", legend = T, legend_breaks = c(20, 40, 60, 80, max(sv_func_groups_genes)), display_numbers = T, number_format = "%.f", cluster_rows = F, cluster_cols = F, cellwidth = 80, cellheight = 30, fontsize = 12, fontsize_number = 12, angle_col = 0)
+
+# dev.off()  
+
+```
+
+
+### Positive selection in single genes (PSG)
+
+
+
+```{r PSG gene categories heatmap, echo=FALSE}
+
+psg_func_groups_genes <- as.matrix(read.table("input_data/psg_func_groups_genes_guloninae.csv", sep = ",", header = T,  row.names = 1))
+
+# png(file = "PSG_func_groups_genes_heatmap_guloninae.png", width = 2000, height = 1600, res = 300)
+pheatmap(t(psg_func_groups_genes), scale = "none", legend = T, legend_breaks = c(1, 5, max(psg_func_groups_genes)), display_numbers = T, number_format = "%.f", cluster_rows = F, cluster_cols = F, cellwidth = 80, cellheight = 30, fontsize = 12, fontsize_number = 12, angle_col = 0)
+
+# dev.off()  
+
+```
+
+
+### All PSGs detected
+
+
+
+```{r PSG all genes guloninae, echo=FALSE}
+
+PSGs <- read.table("input_data/PSGs_guloninae.csv", sep = ",", header = T)
+
+# png(file = "PSGs_guloninae.png", width = 700, height = 800, res = 300)
+
+PSGs %>% ggplot(aes(x = Species, y = PSGs)) +
+                 geom_col(position = "dodge") +
+                 scale_fill_manual(values = c("grey"), name = "Species") +
+                 labs(x = "Species", y = "Number of genes") +
+                 theme_light() +
+                 theme(axis.title.x = element_text(size = 8, vjust = -0.90),
+                 axis.title.y = element_text(size = 8, vjust = 1.90),
+                 legend.margin = margin(0.5, 0.5, 0.5,0.5)) +
+                 theme(plot.title = element_text(size = 10,
+                 margin = margin(0, 0, 6, 0)))
+           
+
+# dev.off() 
+
+```
+
+
+### Gene categories of detected gene expansions - heatmap 
+
+```{r gene expansions categories heatmap, echo=FALSE}
+
+gene_exp_func_groups_genes <- as.matrix(read.table("input_data/gene_expansions_func_groups_genes_guloninae.csv", sep = ",", header = T,  row.names = 1))
+
+# png(file = "gene_exp_func_groups_genes_heatmap_guloninae.png", width = 2000, height = 1600, res = 300)
+pheatmap(t(gene_exp_func_groups_genes), scale = "none", legend = T, legend_breaks = c(1, 5, 10, max(psg_func_groups_genes)), display_numbers = T, number_format = "%.f", cluster_rows = F, cluster_cols = F, cellwidth = 80, cellheight = 30, fontsize = 12, fontsize_number = 12, angle_col = 0)
+
+# dev.off()  
+
+```
+
+### All gene expansions detected
+
+
+```{r gene family expansions guloninae, echo=FALSE}
+
+
+gene_expansions <- read.table("input_data/gene_family_expansions_guloninae.csv", sep = ",", header = T)
+
+# png(file = "gene_family_expansions_guloninae.png", width = 700, height = 800, res = 300)
+
+gene_expansions %>% ggplot(aes(x = Species, y = Gene_family_expansions)) +
+                 geom_col(position = "dodge") +
+                 scale_fill_manual(values = c("grey"), name = "Species") +
+                 labs(x = "Species", y = "Number of genes") +
+                 theme_light() +
+                 theme(axis.title.x = element_text(size = 8, vjust = -0.90),
+                 axis.title.y = element_text(size = 8, vjust = 1.90),
+                 legend.margin = margin(0.5, 0.5, 0.5,0.5)) +
+                 theme(plot.title = element_text(size = 10,
+                 margin = margin(0, 0, 6, 0)))
+           
+
+# dev.off() 
+
+
+
+```
+
+### SV lengths  -  private genic SVs
+
+```{r private genic SVs - lengths guloninae, echo=FALSE}
+
+sv_lengths <- read.table("input_data/private_genic_sv_len_distribution_guloninae.csv", sep = ",", header = T) %>%
+              rename_all(toupper) %>%
+              pivot_longer(!c(SPECIES,LEN), names_to = "SV_type", values_to = "Count")
+              # extend table into longer format (transpose SV types and counts per sp)
+
+
+
+# png(file = "private_genic_SVs_lengths_guloninae.png", width = 2800, height = 1200, res = 300)
+
+sv_lengths %>% group_by(LEN) %>%
+              mutate(LEN = factor(LEN), levels = unique(LEN)) %>%
+              ggplot(aes(x = factor(LEN), y = Count , fill = factor(SV_type))) +
+              geom_col(position = "stack") +
+              scale_fill_manual(values = c("cornflowerblue", "brown1", "green4", "darkgoldenrod1"), name = "SV type") +
+              labs(x = "SV size bins", y = "Number of SVs") +
+              theme_light() +
+              theme(axis.title.x = element_text(size = 8, vjust = -0.90),
+                  axis.title.y = element_text(size = 8, vjust = 1.90),
+                  legend.margin = margin(0.5, 0.5, 0.5,0.5)) +
+              theme(plot.title = element_text(size = 10,
+                  margin = margin(0, 0, 6, 0))) +
+              facet_grid(. ~ SV_type, scales= "free") +
+              facet_wrap(. ~ SPECIES, ncol = 3, nrow = 1, scales= "free") # allow diff. scales in plot, y-axis in this case
+  
+ 
+
+# dev.off() 
+
+
+```
+
+### Gene family expansions and contractions - tree
+
+```{r gene family expansions/contractions tree guloninae, include=FALSE}
+
+# gf_tree <- read.tree("input_data/sp_tree_ultrametric_david.nw") gf_tree_data <- as.tibble(gf_tree) %>%
+                 # mutate(expansions = c("+81", "+35", "+39", "+34", "+33", "+7", "+53", "+23", "+1", NA, NA, NA, NA, NA, NA))
+#
+# gf_tree %>% ggtree(geom_tiplab(geom = "text") +
+#                    geom_label(aes(x=branch, label=label), fill="black"))
+#
+#                       geom_tiplab(geom = "text") +
+#                  geom_label(aes(x=branch, label=S), fill="lightgreen") +
+#                  geom_label(aes(label=D), fill="steelblue") +
+#                  geom_text(aes(label=B), hjust=‐.5))
+
+
+#
+# trophic_habit <‐ setNames(info$trophic_habit, info$Newick_label)
+# fitER <‐ ape::ace(trophic_habit,tree,model=“ER”,type=“discrete”)
+# ancstats <‐ as.data.frame(fitER$lik.anc)
+# ancstats$node <‐ 1:Nnode(tree) + Ntip(tree)
+# geom_tiplab() +
+# geom_label(aes(x=branch, label=S), fill=‘lightgreen’) +
+# geom_label(aes(label=D), fill=‘steelblue’) +
+# geom_text(aes(label=B), hjust=‐.5)
+#
+#
+#
+# cols <‐ RColorBrewer::brewer.pal(length(unique(trophic_habit)), “Set1”)
+# names(cols) <‐ sort(unique(trophic_habit))
+# pies <‐ nodepie(ancstats, cols=1:3)
+# pies <‐ lapply(pies, function(g) g + scale_fill_manual(values = cols))
+
+
+```
+
+
+
+
+### Distribution of SVs along reference chromosomes ###
+
+```{r SV distribution on chromosomes, echo=FALSE, include=FALSE}
+
+# import list of ordered dom. fer reference chromosomes
+ordered_scf_dom_fer <- read.table("input_data/scf_list.tsv") %>% 
+                       rename(Scaffolds = "V1") %>%
+                       mutate(Chromosomes = c(seq(1:19),"X")) %>%
+                       select(Chromosomes, everything())
+
+```
+
+
+
